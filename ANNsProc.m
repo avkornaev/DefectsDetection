@@ -25,7 +25,7 @@ minGrad=1e-8;%minimal value of the gradient
 maxValChecks=1e8;%Maximum Validation Checks
 %lambda=5e-5;%Lambda parameter
 %divideDataSet=[0.7,0.2,0.1];%training,validation and test subsets
-maxTrainIter=20;%number of training cicles
+maxTrainIter=10;%number of training cicles
 
 %Switches
 newClassDesign="on";%a new class design switch, "on","off"
