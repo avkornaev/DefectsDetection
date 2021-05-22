@@ -25,7 +25,7 @@ maxDoubtsRatio=0.8;%maximum Doubts Ratio
 
 %Switches
 newClassDesign="on";%a new class design switch, "on","off"
-doubtModeReaction="pass";% reaction on the doubt response is "oneMoreSet" or "pass"
+doubtModeReaction="oneMoreSet";% reaction on the doubt response is "oneMoreSet" or "pass"
 
 %Initialisation
 classDistribution=zeros(maxTrainIter,ns+1);
@@ -167,6 +167,7 @@ figure('Color','w')
 plot(sampleLength,'xr')
 xlabel('Sample number')
 ylabel('Sample length')
+
 end
 
 figure
@@ -174,6 +175,11 @@ plot(currentAccuracy)
 xlabel('# iteration')
 title ('Accuracy Dynamics')
 
+figure('Color','w')
+testNo=linspace(1,length(ItarU),length(ItarU));
+plot(testNo,mode(ItarU),'ok',testNo,mode(IpredU),'xr');
+legend('target class No','predicted class No')
+title ('Predictions vs Targets for the test set')
 
 
 
