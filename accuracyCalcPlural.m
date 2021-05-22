@@ -68,7 +68,7 @@ for j=1:numPred %check all the predictions
 %             end
     end
     if pred==ns+1
-        warning(['the',num2str(j),'-th sample responsed as the doubt class'])
+        warning(['the ',num2str(j),'-th sample responsed as the doubt class'])
         %missedSet=j
         numPredU=numPredU-1;%exclude one predition from its total number
     end

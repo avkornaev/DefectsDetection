@@ -14,13 +14,14 @@ nframes=10;%number of samples for one decision
 
 %Settings, including net.trainParam
 hiddenLayerSize = [8 8 8 8];%sizes of hidden layers
-maxEpochs=100;%Maximum Epochs
+maxEpochs=500;%Maximum Epochs
 performanceGoal=0;%Performance Goal
 minGrad=1e-8;%minimal value of the gradient 
 maxValChecks=1e8;%Maximum Validation Checks
 %lambda=5e-5;%Lambda parameter
 %divideDataSet=[0.7,0.2,0.1];%training,validation and test subsets
 maxTrainIter=10;%number of training cicles
+maxDoubtsRatio=0.8;%maximum Doubts Ratio
 
 %Switches
 newClassDesign="on";%a new class design switch, "on","off"
@@ -75,7 +76,7 @@ classDistribution_val=zeros(maxTrainIter,ns+1);
                 net.divideParam.valInd=valInd;
                 net.divideParam.testInd=testInd;
                 
-                net.trainFcn='traincgb';
+                net.trainFcn='trainscg';
                 
                 net.trainParam.epochs = maxEpochs; 
                 net.trainParam.goal = performanceGoal; 
@@ -101,10 +102,12 @@ classDistribution_val=zeros(maxTrainIter,ns+1);
         if newClassDesign=="on"
             %[inputs,targets]=doubts_class(ns,net,inputs,targets);
             [targets,Mpred,Ipred,Mtar,Itar,H,classDistr]=...
-                  doubts_class(ns,net,inputs,targets,targets0);
+                  doubts_class(ns,net,inputs,targets,targets0,...
+                  maxDoubtsRatio);
             %DoubtsVsTrain=[sumDoubts nTrain]
             [targets_val,Mpred,Ipred,Mtar,Itar,H,classDistr_val]=...
-                  doubts_class(ns,net,inputs_val,targets_val,targets_val0);                    
+                  doubts_class(ns,net,inputs_val,targets_val,targets_val0,...
+                  maxDoubtsRatio);                    
             
             classDistribution(c,:)=classDistr;
             classDistribution_val(c,:)=classDistr_val;  

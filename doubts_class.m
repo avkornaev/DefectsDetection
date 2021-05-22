@@ -1,5 +1,5 @@
 function [targets,Mpred,Ipred,Mtar,Itar,H,classDistribution]=...
-    doubts_class(ns,net,inpData,targData,targets0)
+    doubts_class(ns,net,inpData,targData,targets0,maxDoubtsRatio)
 %SUBPROGRAM generates or updates the extra "I Don't know" class 
 
 sumDoubts=0;
@@ -19,7 +19,7 @@ H = net(inpData);
 [Mtar0,Itar0]=max(targets0);%targets
 
 
-for j=1:st(2)
+for j=1:st(2)*maxDoubtsRatio
     %Way into the "IDK" class
     if Itar(j)~=Ipred(j) && Ipred(j)~=ns+1
         targData(:,j)=zeros(ns+1,1);%erase first
