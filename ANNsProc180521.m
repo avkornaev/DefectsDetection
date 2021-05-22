@@ -1,7 +1,7 @@
 %% 0. Downloading and mixing martices
 clear
 clc
-%close all
+close all
 
 cd 'H:\Exp_Defects_Detecting_Competition_mar_2020'
 load dataSet
@@ -10,17 +10,17 @@ load dataSet
 %Modal value
 %n=100;% кол-во обучающих выборок из 1 опыта
 nmoda=n;% number of samples from one test 
-nframes=20;%number of samples for one decision
+nframes=10;%number of samples for one decision
 
 %Settings, including net.trainParam
-hiddenLayerSize = [10];%sizes of hidden layers
-maxEpochs=50;%Maximum Epochs
+hiddenLayerSize = [8 8 8 8];%sizes of hidden layers
+maxEpochs=100;%Maximum Epochs
 performanceGoal=0;%Performance Goal
 minGrad=1e-8;%minimal value of the gradient 
 maxValChecks=1e8;%Maximum Validation Checks
 %lambda=5e-5;%Lambda parameter
 %divideDataSet=[0.7,0.2,0.1];%training,validation and test subsets
-maxTrainIter=20;%number of training cicles
+maxTrainIter=10;%number of training cicles
 
 %Switches
 newClassDesign="on";%a new class design switch, "on","off"
@@ -84,16 +84,16 @@ classDistribution_val=zeros(maxTrainIter,ns+1);
                 %net.trainParam.lambda=lambda;
                 
             %Train the ANN
-            if c>2
-                %load pretrained net
-                load MyCheckpoint
-                net=checkpoint.net;
-                %load the newer data
-%                 net.divideParam.trainInd=trainInd;
-%                 net.divideParam.valInd=valInd;
-%                 net.divideParam.testInd=testInd;
-            end
-            [net,tr] = train(net,inp,tar,'CheckpointFile','MyCheckpoint');
+%             if c>2
+%                 %load pretrained net
+%                 load MyCheckpoint
+%                 net=checkpoint.net;
+%                 %load the newer data
+% %                 net.divideParam.trainInd=trainInd;
+% %                 net.divideParam.valInd=valInd;
+% %                 net.divideParam.testInd=testInd;
+%             end
+            [net,tr] = train(net,inp,tar);%,'CheckpointFile','MyCheckpoint');
             
             figure
             plotperform(tr)
@@ -120,7 +120,7 @@ classDistribution_val=zeros(maxTrainIter,ns+1);
             n,nframes,doubtModeReaction);
          currentAccuracy(c)=accuracy;
          currentAccuracy(end)
-         [numTruePred numPredU]
+         [numTruePred numPredU c]
         end
 
 meanAccuracy=mean(currentAccuracy)

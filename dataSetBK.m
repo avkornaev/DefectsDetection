@@ -1,10 +1,18 @@
 function [inputsBruel,inputs_testBruel,inputs_valBruel]=...
-        dataSetBK(Nexp,Npar,Nexcl,Ntest,Nval,Ndef,n,l,NmeasBruel,fm,cutBK,MinValsBruel,DeltaValsBruel,saveDir)
+        dataSetBK(Nexp,Npar,Nexcl,Ntest,Nval,Ndef,n,l,NmeasBruel,fm,...
+        cutBK,MinValsBruel,DeltaValsBruel,saveDir,useAutoencoderedBKOnly)
 %ПОДПРОГРАММА ФОРМИРОВАНИЯ ЧАСТИ ДАТАСЕТА ПО ДАННЫМ ШАССИ BK
-cd DataSet
+
 
 %Загрузка образца
-load saved1
+if useAutoencoderedBKOnly=="on"
+    cd DataSetAutoencoder
+    load autoencoder_saved1
+else
+    cd DataSet
+    load saved1
+end
+
 lb=size(FFT_vibro1,1);%базовый размер кадров для измерений B&K
 %Проверка условия обрезки данных
 switch cutBK
@@ -16,56 +24,43 @@ end
 inputsBruel=zeros(sum(NmeasBruel)*lb,n*Nexp*(Npar-Nexcl));
 %Заготовки матриц для тестирования and validation ИНС
 inputs_testBruel=zeros(sum(NmeasBruel)*lb,n*size(Ntest,1)*size(Ntest,2));
-inputs_valBruel =zeros(sum(NmeasBruel)*lb,n*size(Ntest,1)*size(Ntest,2));
+inputs_valBruel =zeros(sum(NmeasBruel)*lb,n*size(Nval,1)*size(Nval,2));
 %Заполнение матриц
-
-%Матрицы targetsBruel, targets_testBruel, targets_valBruel
-% for i=1:Nexp
-%     
-%     start=1+((i-1)*n*(Npar-Nexcl));
-%     stop=start+(n*(Npar-Nexcl))-1;
-%     targetsBruel(i,start:stop)=1;
-%     
-%     start=1+((i-1)*n*Ntest);
-%     stop=start+(n*Ntest)-1;
-%     targets_testBruel(i,start:stop)=1;
-%     
-%     start=1+((i-1)*n*Nval);
-%     stop=start+(n*Nval)-1;
-%     targets_valBruel(i,start:stop)=1;
-% end
-% if ns == 2 %переписывание матриц для 2 классов
-%     targetsBruel(1,1:(n*(Npar-Nexcl)))=1;
-%     targetsBruel(2,(n*(Npar-Nexcl))+1:end)=1;
-%     targetsBruel(3:end,:)=[];
-%     
-%     targets_testBruel(1,1:n*Ntest)=1;
-%     targets_testBruel(2,n*Ntest+1:end)=1;
-%     targets_testBruel(3:end,:)=[];
-% 
-%     targets_valBruel(1,1:n*Nval)=1;
-%     targets_valBruel(2,n*Nval+1:end)=1;
-%     targets_valBruel(3:end,:)=[];
-% end
 
 %Матрицы inputsBruel, inputs_testBruel, inputs_valBruel
 c=0;c_test=0;c_val=0;i=0;
 for i=1:Nexp*Npar %номер опыта
     %num2str(i)
     ic=i;
-    load (['saved',num2str(i)])
+    
+    if useAutoencoderedBKOnly=="on"
+        load (['autoencoder_saved',num2str(i)])
+    else
+        load (['saved',num2str(i)])
+    end
+    
     if fm==1
         FFT_micro=sgolayfilt(FFT_micro,SGFiltOrder,CadrLeng);
         FFT_vibro1=sgolayfilt(FFT_vibro1,SGFiltOrder,CadrLeng);
         FFT_vibro2=sgolayfilt(FFT_vibro2,SGFiltOrder,CadrLeng);
         FFT_vibro3=sgolayfilt(FFT_vibro3,SGFiltOrder,CadrLeng);
     end
-
-    bufBruel=[(FFT_micro-MinValsBruel(1))./DeltaValsBruel(1);...
+    
+    if useAutoencoderedBKOnly=="on"
+        bufBruel=[FFT_micro';...
+                  FFT_micro';...
+                  FFT_vibro1';...
+                  FFT_vibro2';...
+                  FFT_vibro3'];
+    else
+        bufBruel=[(FFT_micro-MinValsBruel(1))./DeltaValsBruel(1);...
               (FFT_micro-MinValsBruel(2))./DeltaValsBruel(2);...
               (FFT_vibro1-MinValsBruel(3))./DeltaValsBruel(3);...
               (FFT_vibro2-MinValsBruel(4))./DeltaValsBruel(4);...
               (FFT_vibro3-MinValsBruel(5))./DeltaValsBruel(5)];
+    end
+    
+
         
     maxnum=size(FFT_vibro1,2);
     rand_numbers = randperm(maxnum);

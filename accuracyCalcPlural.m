@@ -1,10 +1,11 @@
-function [accuracy,numTruePred,numPred,Ipred,Itar]=...
-    accuracyCalcPlural(ns,net,inpData,targData,n,nframes)
+function [accuracy,numTruePred,numPredU,Ipred,Itar,sampleLength]=...
+    accuracyCalcPlural(ns,net,inpData,targData,n,nframes,doubtModeReaction)
 %The function calculates accuracy on the basis of series of predictions.
 %The series consists of nframes
 
 s=size(targData);
 nfb=n/nframes;%number of prediction sets in a test
+
 
 %check
 if rem(n,nframes)~=0
@@ -18,17 +19,18 @@ H = net(inpData);%predictions
 Ipred=reshape(Ipred,nframes,[]);%group predictions into sets
 Itar=reshape(Itar,nframes,[]);%grop targets into sets too
 numPred=length(Ipred);%total number of predictions
+sampleLength=ones(1,numPred)*nframes;
 
-%numPredU=numPred;% updatable total number of predictions initialisation 
+numPredU=numPred;% updatable total number of predictions initialisation 
 numTruePred=0;%total number of true predictions
 testNumber=0;%counter
 
 for j=1:numPred %check all the predictions
     
     if rem(j,nfb)==0
-        testNumber=testNumber+1%the test number counter
-        [Ipred(:,j) Itar(:,j)]
-        [mode(Ipred(:,j)) mode(Itar(:,j))]
+        testNumber=testNumber+1;%the test number counter
+        %[Ipred(:,j) Itar(:,j)]
+        %[mode(Ipred(:,j)) mode(Itar(:,j))]
     end
     
     pred=mode(Ipred(:,j));%outputs the most frequent pred. value in the set 
@@ -40,17 +42,37 @@ for j=1:numPred %check all the predictions
 %     checksmth=(pred==ns+1 && j+i+1< testNumber*nfb)
 %     interval=[j (j+i)]
 %     testNumber*nfb
-    while pred==ns+1 && j+i+1< (testNumber+1)*nfb && j<numPred %doubt class inside one test
-        warning('the doubt class is predicted')
-        i=i+1
-        interval=[j (j+i)]
-        maxval=(testNumber+1)*nfb
-        size (Ipred(:,j:(j+i)))
-        reshapedPred=reshape(Ipred(:,j:(j+i)),1,[])
-        pred=mode(reshape(Ipred(:,j:(j+i)),1,[]))%concatination
-        %numPredU=numPredU-1;%exclude one predition from its total number
+
+    switch doubtModeReaction
+        case "oneMoreSet"
+            while pred==ns+1 && j+i+1< (testNumber+1)*nfb && j<numPred %doubt class inside one test
+                %warning('the doubt class is predicted')
+                i=i+1;
+                %interval=[j (j+i)]
+                %maxval=(testNumber+1)*nfb
+                %size (Ipred(:,j:(j+i)))
+                %reshapedPred=reshape(Ipred(:,j:(j+i)),1,[])
+                
+                %Concatinate and predict
+                concSample=reshape(Ipred(:,j:(j+i)),1,[]);
+                pred=mode(concSample);
+                %Calculate sample length
+                sampleLength(j)=length(concSample);
+            end
+            
+        case "pass"
+%             if pred==ns+1
+%                 warning(['the',num2str(j),'-th sample responsed as the doubt class'])
+%                 %missedSet=j
+%                 numPredU=numPredU-1%exclude one predition from its total number
+%             end
     end
-       
+    if pred==ns+1
+        warning(['the',num2str(j),'-th sample responsed as the doubt class'])
+        %missedSet=j
+        numPredU=numPredU-1;%exclude one predition from its total number
+    end
+    
 %     if nfbU == j
 %         break %samples are over
 %     end
@@ -60,7 +82,7 @@ for j=1:numPred %check all the predictions
     end
 end
 
-accuracy=numTruePred/numPred;
+accuracy=numTruePred/numPredU;
 
 % if size(outp,1)==ns+1%extra class is present
 %     sumDoubts=sum(Iout==ns+1);
