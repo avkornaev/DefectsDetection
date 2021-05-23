@@ -11,7 +11,7 @@ load dataSet
 %n=100;% кол-во обучающих выборок из 1 опыта
 nmoda=n;% number of samples from one test 
 nframes=10;%number of samples for one decision
-edge=400;
+edge=size(inputs,1);%edge=400;
 
 %Settings, including net.trainParam
 hiddenLayerSize = [8 8 8 8];%sizes of hidden layers
