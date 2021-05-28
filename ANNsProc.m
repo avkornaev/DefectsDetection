@@ -3,7 +3,7 @@ clear
 clc
 close all
 
-cd 'H:\Exp_Defects_Detecting_Competition_mar_2020'
+cd 'G:\DefectsDetection'
 load dataSet
 
 
@@ -15,17 +15,18 @@ edge=size(inputs,1);%edge=400;
 
 %Settings, including net.trainParam
 hiddenLayerSize = [8 8 8 8];%sizes of hidden layers
-maxEpochs=500;%Maximum Epochs
+maxEpochs=250;%Maximum Epochs
 performanceGoal=0;%Performance Goal
 minGrad=1e-8;%minimal value of the gradient 
 maxValChecks=1e8;%Maximum Validation Checks
 %lambda=5e-5;%Lambda parameter
 %divideDataSet=[0.7,0.2,0.1];%training,validation and test subsets
-maxTrainIter=50;%number of training cicles
+maxTrainIter=7;%number of training cicles
 maxDoubtsRatio=0.8;%maximum Doubts Ratio
+ms=3;%averaging when calculating accuracy starts from the ms-th iteration
 
 %Switches
-newClassDesign="on";%a new class design switch, "on","off"
+newClassDesign="off";%a new class design switch, "on","off"
 doubtModeReaction="oneMoreSet";% reaction on the doubt response is "oneMoreSet" or "pass"
 
 %Initialisation
@@ -119,17 +120,31 @@ classDistribution_val=zeros(maxTrainIter,ns+1);
             %doubtClassDyn=[doubtClassDyn sumDoubts];
         end
         
-        [accuracy,numTruePred,numPredU,IpredU,ItarU,sampleLength]=...
-            accuracyCalcPluralPlus(ns,net,inputs_test(1:edge,:),targets_test,...
-            n,nframes,doubtModeReaction);
-         currentAccuracy(c)=accuracy;
-         currentAccuracy(end)
+        [accuracy,precision,recall,Fscore,sensitivity,specificity,...
+            numTruePred,numPredU,IpredU,ItarU,sampleLength]=...
+            accuracyCalcPluralV3(ns,net,inputs_test(1:edge,:),...
+            targets_test,n,nframes,doubtModeReaction);
+         currentaccuracy(c)=accuracy;
+         currentprecision(c)=precision;
+         currentrecall(c)=recall;
+         currentFscore(c)=Fscore;
+         currentsensitivity(c)=sensitivity;
+         currentspecificity(c)=specificity;
+         
+         
+         currentaccuracy(end)
          [numTruePred numPredU c]
         end
 
-meanAccuracy=mean(currentAccuracy)
-medianAccuracy=median(currentAccuracy)
-        
+%meanAccuracy=mean(currentAccuracy)
+%The median values are calculated starting from the ms-th iteration
+accuracy=median(currentaccuracy(ms:end))%
+precision=median(currentprecision(ms:end))%
+recall=median(currentrecall(ms:end))%
+Fscore=median(currentFscore(ms:end))%
+sensitivity=median(currentsensitivity(ms:end))%
+specificity=median(currentspecificity(ms:end))%
+      
 
 %% Visualisation
 
@@ -171,16 +186,19 @@ ylabel('Sample length')
 
 end
 
-figure
-plot(currentAccuracy)
-xlabel('# iteration')
-title ('Accuracy Dynamics')
-
 figure('Color','w')
-testNo=linspace(1,length(ItarU),length(ItarU));
+testNo=linspace(1,size(ItarU,2),size(ItarU,2));
 plot(testNo,mode(ItarU),'ok',testNo,mode(IpredU),'xr');
 legend('target class No','predicted class No')
 title ('Predictions vs Targets for the test set')
+
+figure
+numIter=linspace(1,maxTrainIter,maxTrainIter);
+plot(numIter,currentaccuracy,'-k',numIter,currentprecision,'--b',numIter,currentrecall,'-.b',...
+    numIter,currentFscore,'-b',numIter,currentsensitivity,'xg',numIter,currentspecificity,'og')
+legend('accuracy','precision','recall','Fscore','sensitivity','specificity')
+xlabel('# iteration')
+title ('Accuracy Dynamics')
 
 
 
