@@ -6,28 +6,32 @@ close all
 cd 'G:\DefectsDetection'
 load dataSet
 
-
-%Modal value
-%n=100;% кол-во обучающих выборок из 1 опыта
-nmoda=n;% number of samples from one test 
 nframes=10;%number of samples for one decision
 edge=size(inputs,1);%edge=400;
+ms=3;%averaging when calculating accuracy starts from the ms-th iteration
+maxTrainIter=10;%number of training cicles
 
-%Settings, including net.trainParam
+%Networks settings
+%The patternnet settings, including net.trainParam
 hiddenLayerSize = [8 8 8 8];%sizes of hidden layers
-maxEpochs=250;%Maximum Epochs
+trainAlgorithmPN='traincgf';
+maxEpochs=10;%Maximum Epochs
 performanceGoal=0;%Performance Goal
 minGrad=1e-8;%minimal value of the gradient 
 maxValChecks=1e8;%Maximum Validation Checks
-%lambda=5e-5;%Lambda parameter
-%divideDataSet=[0.7,0.2,0.1];%training,validation and test subsets
-maxTrainIter=7;%number of training cicles
 maxDoubtsRatio=0.8;%maximum Doubts Ratio
-ms=3;%averaging when calculating accuracy starts from the ms-th iteration
+%The MLP settings
+trainAlgorithm = 'adam';% 'sgdm', 'adam'
+InitLearnRate = 2e-4;%initial learning rate
+MaxEp = 2;%max epoches
+MiniBatchS = 20;
+GradientThres=2;
+validationFrequency = floor(length(targets)/MiniBatchS);
 
 %Switches
-newClassDesign="off";%a new class design switch, "on","off"
+newClassDesign="on";%a new class design switch, "on","off"
 doubtModeReaction="oneMoreSet";% reaction on the doubt response is "oneMoreSet" or "pass"
+netType='mlp';% 'mlp', 'patternNet'
 
 %Initialisation
 classDistribution=zeros(maxTrainIter,ns+1);
@@ -35,7 +39,7 @@ classDistribution_val=zeros(maxTrainIter,ns+1);
 
 %% 1. Training using inputs,targets
 
-        acDyn=0; acMVDyn=0; doubtClassDyn=0;
+acDyn=0; acMVDyn=0; doubtClassDyn=0;
         for c=1:maxTrainIter
             if c==1
                 %Mix matrices and create dataset 
@@ -68,48 +72,46 @@ classDistribution_val=zeros(maxTrainIter,ns+1);
                 tar=[targets targets_val targets_test]; 
             end
             
-                %Create the ANN template
-                net = patternnet(hiddenLayerSize); 
-                net.divideFcn='divideind';
-                [trainInd,valInd,testInd] = divideind(nAll,(1:nTrain),...
-                                     ((nTrain+1):(nTrain+nValidation)),...
-                    ((nTrain+nValidation+1):(nTrain+nValidation+1+nTest)));
-                net.divideParam.trainInd=trainInd;
-                net.divideParam.valInd=valInd;
-                net.divideParam.testInd=testInd;
+            switch netType
+                case 'patternNet'
+                    [net] = patternNet(trainAlgorithmPN,hiddenLayerSize,...
+                        nAll,nTrain,nValidation,nTest,maxEpochs,...
+                        performanceGoal,maxValChecks,minGrad);
+                    [net,tr] = train(net,inp(1:edge,:),tar);%,'CheckpointFile','MyCheckpoint');
+                    figure
+                    plotperform(tr)
+                case 'mlp'
+                    numClasses=size(targets,1)
+                    numFeatures=size(inputs(1:edge,:),1)
+                    [tbl] = transformInputs(inputs(1:edge,:),targets);
+                    [tbl_val] = transformInputs(inputs_val(1:edge,:),targets_val);
+                    [tbl_test] = transformInputs(inputs_test(1:edge,:),targets_test);
+                    
+                    [layers] = mlp(numFeatures,hiddenLayerSize(1),numClasses);
+                    analyzeNetwork(layers)
+                    
+                    opts = trainingOptions(trainAlgorithm, ...
+                    'InitialLearnRate',InitLearnRate, ...
+                    'GradientThreshold',GradientThres, ...
+                    'MaxEpochs',MaxEp, ...
+                    'MiniBatchSize',MiniBatchS,...
+                    'ValidationData',tbl_val, ...
+                    'Verbose',true, ...
+                    'Plots','training-progress');
                 
-                net.trainFcn='trainscg';
+                    net = trainNetwork(tbl,layers,opts)
                 
-                net.trainParam.epochs = maxEpochs; 
-                net.trainParam.goal = performanceGoal; 
-                net.trainParam.max_fail = maxValChecks; 
-                net.trainParam.min_grad=minGrad;
-                %net.trainParam.lambda=lambda;
-                
-            %Train the ANN
-%             if c>2
-%                 %load pretrained net
-%                 load MyCheckpoint
-%                 net=checkpoint.net;
-%                 %load the newer data
-% %                 net.divideParam.trainInd=trainInd;
-% %                 net.divideParam.valInd=valInd;
-% %                 net.divideParam.testInd=testInd;
-%             end
-            [net,tr] = train(net,inp(1:edge,:),tar);%,'CheckpointFile','MyCheckpoint');
+            end
             
-            figure
-            plotperform(tr)
-            
-        if newClassDesign=="on"
+            if newClassDesign=="on"
             %[inputs,targets]=doubts_class(ns,net,inputs,targets);
-            [targets,Mpred,Ipred,Mtar,Itar,H,classDistr]=...
+            [targets,Ipred,Mtar,Itar,classDistr]=...
                   doubts_class(ns,net,inputs(1:edge,:),targets,targets0,...
-                  maxDoubtsRatio);
+                  maxDoubtsRatio,netType);
             %DoubtsVsTrain=[sumDoubts nTrain]
-            [targets_val,Mpred,Ipred,Mtar,Itar,H,classDistr_val]=...
+            [targets_val,Ipred,Mtar,Itar,classDistr_val]=...
                   doubts_class(ns,net,inputs_val(1:edge,:),targets_val,targets_val0,...
-                  maxDoubtsRatio);                    
+                  maxDoubtsRatio,netType);                    
             
             classDistribution(c,:)=classDistr;
             classDistribution_val(c,:)=classDistr_val;  
@@ -118,12 +120,13 @@ classDistribution_val=zeros(maxTrainIter,ns+1);
             %DoubtsVsValidation=[sumDoubts nValidation]
             
             %doubtClassDyn=[doubtClassDyn sumDoubts];
-        end
+            end
+        
         
         [accuracy,precision,recall,Fscore,sensitivity,specificity,...
             numTruePred,numPredU,IpredU,ItarU,sampleLength]=...
             accuracyCalcPluralV3(ns,net,inputs_test(1:edge,:),...
-            targets_test,n,nframes,doubtModeReaction);
+            targets_test,n,nframes,doubtModeReaction,netType);
          currentaccuracy(c)=accuracy;
          currentprecision(c)=precision;
          currentrecall(c)=recall;
@@ -135,6 +138,7 @@ classDistribution_val=zeros(maxTrainIter,ns+1);
          currentaccuracy(end)
          [numTruePred numPredU c]
         end
+        
 
 %meanAccuracy=mean(currentAccuracy)
 %The median values are calculated starting from the ms-th iteration

@@ -1,5 +1,6 @@
-function [targets,Mpred,Ipred,Mtar,Itar,H,classDistribution]=...
-    doubts_class(ns,net,inpData,targData,targets0,maxDoubtsRatio)
+function [targets,Ipred,Mtar,Itar,classDistribution]=...
+    doubts_class(ns,net,inpData,targData,targets0,maxDoubtsRatio,...
+    netType)
 %SUBPROGRAM generates or updates the extra "I Don't know" class 
 
 sumDoubts=0;
@@ -13,8 +14,13 @@ if st(1)==ns
 end
 
 %Predictions
-H = net(inpData);
-[Mpred,Ipred]=max(H);%predictions
+switch netType
+    case 'patternNet'
+        H = net(inpData);
+        [Mpred,Ipred]=max(H);%predictions
+    case 'mlp'
+        Ipred = double(classify(net,inpData'));
+end
 [Mtar,Itar]=max(targData);%targets
 [Mtar0,Itar0]=max(targets0);%targets
 

@@ -1,7 +1,7 @@
 function [accuracy,precision,recall,Fscore,sensitivity,specificity,...
     numTruePred,numPredU,Ipred,Itar,sampleLength]=...
     accuracyCalcPluralV3(ns,net,inpData,targData,n,nframes,...
-    doubtModeReaction)
+    doubtModeReaction,netType)
 %The function calculates accuracy on the basis of series of predictions on nframes.
 %The series consists of nframes
 
@@ -12,9 +12,15 @@ nfb=n/nframes;%number of prediction sets in a test
 if rem(n,nframes)~=0
     error('rem(n,nframes)~=0')
 end
-    
-H = net(inpData);%predictions 
-[Mpred,Ipred]=max(H);
+
+switch netType
+    case 'patternNet'
+        H = net(inpData);
+        [Mpred,Ipred]=max(H);%predictions
+    case 'mlp'
+        Ipred = double(classify(net,inpData'));
+end
+
 [Mtar,Itar]=max(targData);
 numClasses=ns;
 TP=zeros(numClasses,1);%true positives over classes predictions counter 
