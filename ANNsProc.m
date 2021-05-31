@@ -1,14 +1,14 @@
 %% 0. Downloading and mixing martices
 clear
 clc
-close all
+%close all
 
 cd 'G:\DefectsDetection'
 load dataSet
 
 nframes=10;%number of samples for one decision
 edge=size(inputs,1);%edge=400;
-ms=1;%averaging when calculating accuracy starts from the ms-th iteration
+ms=3;%averaging when calculating accuracy starts from the ms-th iteration
 maxTrainIter=10;%number of training cicles
 GNratio=1;%the gaussian noise ratio when GaussianNoise="on" 
 maxDoubtsRatio=0.8;%maximum Doubts Ratio
@@ -17,7 +17,7 @@ maxDoubtsRatio=0.8;%maximum Doubts Ratio
 %The patternnet settings, including net.trainParam
 hiddenLayerSize = [8 8 8 8];%sizes of hidden layers
 trainAlgorithmPN='traincgf';
-maxEpochs=10;%Maximum Epochs
+maxEpochs=33;%Maximum Epochs
 performanceGoal=0;%Performance Goal
 minGrad=1e-8;%minimal value of the gradient 
 maxValChecks=1e8;%Maximum Validation Checks
@@ -34,12 +34,12 @@ validationFrequency = floor(length(targets)/MiniBatchS);
 checkpointPath = 'SaveCheckpoints';
 
 %Switches
-newClassDesign="on";%a new class design switch, "on","off"
+newClassDesign="off";%a new class design switch, "on","off"
 doubtModeReaction="oneMoreSet";% reaction on the doubt response is "oneMoreSet" or "pass"
 netType='mlp';% 'mlp', 'patternNet'
 modeN="useNetTemplate";%загрузка шаблона или обученной сети:
 % "useNetTemplate","useTrainedNet"
-GaussianNoise=struct('switch',"on",'value',30,'treshold',100);%add gaussian noise to signals while relabeling
+GaussianNoise=struct('switch',"on",'value',10,'treshold',100);%add gaussian noise to signals while relabeling
 switchSet=struct('newClassDesign',newClassDesign,...
     'doubtModeReaction',doubtModeReaction,'netType',netType,'modeN',modeN,...
     'GaussianNoise',GaussianNoise);%all switches are in one structure
@@ -225,14 +225,15 @@ plot(numIter,currentaccuracy,'-k',numIter,currentprecision,'--b',numIter,current
     numIter,currentFscore,'-b',numIter,currentsensitivity,'xg',numIter,currentspecificity,'og')
 legend('accuracy','precision','recall','Fscore','sensitivity','specificity')
 xlabel('# iteration')
-title ('Accuracy Dynamics')
+title (['Median a=',num2str(accuracy),...
+        'p' Dynamics'])
 
-%%
 inputsN=awgn(inputs,30,'measured');
 figure
 plot(inputs(:,121),'-r')
 hold on
 plot(inputsN(:,121),':b')
+hold off
 
 % switch netType
 %     case 'patternNet'
