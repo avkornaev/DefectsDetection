@@ -8,8 +8,10 @@ load dataSet
 
 nframes=10;%number of samples for one decision
 edge=size(inputs,1);%edge=400;
-ms=3;%averaging when calculating accuracy starts from the ms-th iteration
+ms=1;%averaging when calculating accuracy starts from the ms-th iteration
 maxTrainIter=10;%number of training cicles
+GNratio=1;%the gaussian noise ratio when GaussianNoise="on" 
+maxDoubtsRatio=0.8;%maximum Doubts Ratio
 
 %Networks settings
 %The patternnet settings, including net.trainParam
@@ -19,19 +21,28 @@ maxEpochs=10;%Maximum Epochs
 performanceGoal=0;%Performance Goal
 minGrad=1e-8;%minimal value of the gradient 
 maxValChecks=1e8;%Maximum Validation Checks
-maxDoubtsRatio=0.8;%maximum Doubts Ratio
+
 %The MLP settings
-trainAlgorithm = 'adam';% 'sgdm', 'adam'
-InitLearnRate = 2e-4;%initial learning rate
-MaxEp = 2;%max epoches
+trainAlgorithm = 'sgdm';% 'sgdm', 'adam'
+InitLearnRate = 5e-3;%initial learning rate
+LearnRateDropFac=0.5;
+LearnRateDropPer=1;
+MaxEp = 1;%max epoches
 MiniBatchS = 20;
 GradientThres=2;
 validationFrequency = floor(length(targets)/MiniBatchS);
+checkpointPath = 'SaveCheckpoints';
 
 %Switches
 newClassDesign="on";%a new class design switch, "on","off"
 doubtModeReaction="oneMoreSet";% reaction on the doubt response is "oneMoreSet" or "pass"
 netType='mlp';% 'mlp', 'patternNet'
+modeN="useNetTemplate";%загрузка шаблона или обученной сети:
+% "useNetTemplate","useTrainedNet"
+GaussianNoise=struct('switch',"on",'value',30,'treshold',100);%add gaussian noise to signals while relabeling
+switchSet=struct('newClassDesign',newClassDesign,...
+    'doubtModeReaction',doubtModeReaction,'netType',netType,'modeN',modeN,...
+    'GaussianNoise',GaussianNoise);%all switches are in one structure
 
 %Initialisation
 classDistribution=zeros(maxTrainIter,ns+1);
@@ -82,24 +93,39 @@ acDyn=0; acMVDyn=0; doubtClassDyn=0;
                     plotperform(tr)
                 case 'mlp'
                     numClasses=size(targets,1)
-                    numFeatures=size(inputs(1:edge,:),1)
+                    numFeatures=size(inputs(1:edge,:),1);
                     [tbl] = transformInputs(inputs(1:edge,:),targets);
                     [tbl_val] = transformInputs(inputs_val(1:edge,:),targets_val);
                     [tbl_test] = transformInputs(inputs_test(1:edge,:),targets_test);
                     
-                    [layers] = mlp(numFeatures,hiddenLayerSize(1),numClasses);
-                    analyzeNetwork(layers)
-                    
+                    switch switchSet.modeN
+                        case "useNetTemplate"
+                            [layers] = ...
+                            mlp(numFeatures,hiddenLayerSize(1),numClasses);
+                            %analyzeNetwork(layers)
+                        case "useTrainedNet"
+                            %Download a trained network
+                            load trained_net;%
+                    end
+                    %InitLearnRate=InitLearnRate*LearnRateDropFac/c;
                     opts = trainingOptions(trainAlgorithm, ...
                     'InitialLearnRate',InitLearnRate, ...
+                    'LearnRateDropFactor',LearnRateDropFac, ...
+                    'LearnRateDropPeriod',LearnRateDropPer, ...
                     'GradientThreshold',GradientThres, ...
                     'MaxEpochs',MaxEp, ...
                     'MiniBatchSize',MiniBatchS,...
                     'ValidationData',tbl_val, ...
                     'Verbose',true, ...
-                    'Plots','training-progress');
-                
-                    net = trainNetwork(tbl,layers,opts)
+                    'CheckpointPath',checkpointPath);%,...
+                    %'Plots','training-progress');
+                    
+                    if c<=2
+                        net = trainNetwork(tbl,layers,opts)
+                    else
+                        trainedNet=[];
+                        net = trainNetwork(tbl,net.Layers,opts)%use trained
+                    end 
                 
             end
             
@@ -107,22 +133,18 @@ acDyn=0; acMVDyn=0; doubtClassDyn=0;
             %[inputs,targets]=doubts_class(ns,net,inputs,targets);
             [targets,Ipred,Mtar,Itar,classDistr]=...
                   doubts_class(ns,net,inputs(1:edge,:),targets,targets0,...
-                  maxDoubtsRatio,netType);
+                  maxDoubtsRatio,netType,GaussianNoise);
             %DoubtsVsTrain=[sumDoubts nTrain]
             [targets_val,Ipred,Mtar,Itar,classDistr_val]=...
                   doubts_class(ns,net,inputs_val(1:edge,:),targets_val,targets_val0,...
-                  maxDoubtsRatio,netType);                    
+                  maxDoubtsRatio,netType,GaussianNoise);                    
             
             classDistribution(c,:)=classDistr;
             classDistribution_val(c,:)=classDistr_val;  
             Ipred2Remember=Ipred;
             Itar2Remember=Itar;
-            %DoubtsVsValidation=[sumDoubts nValidation]
-            
-            %doubtClassDyn=[doubtClassDyn sumDoubts];
             end
-        
-        
+            
         [accuracy,precision,recall,Fscore,sensitivity,specificity,...
             numTruePred,numPredU,IpredU,ItarU,sampleLength]=...
             accuracyCalcPluralV3(ns,net,inputs_test(1:edge,:),...
@@ -142,15 +164,16 @@ acDyn=0; acMVDyn=0; doubtClassDyn=0;
 
 %meanAccuracy=mean(currentAccuracy)
 %The median values are calculated starting from the ms-th iteration
+
+      
+
+%% Visualisation
 accuracy=median(currentaccuracy(ms:end))%
 precision=median(currentprecision(ms:end))%
 recall=median(currentrecall(ms:end))%
 Fscore=median(currentFscore(ms:end))%
-sensitivity=median(currentsensitivity(ms:end))%
-specificity=median(currentspecificity(ms:end))%
-      
-
-%% Visualisation
+sensitivity=median(currentsensitivity(ms:end))%probability of a negative test given that the patient is well
+specificity=median(currentspecificity(ms:end))%probability of a negative test given that the patient is well
 
 if newClassDesign=="on"
 figure ('Color','w')
@@ -204,9 +227,24 @@ legend('accuracy','precision','recall','Fscore','sensitivity','specificity')
 xlabel('# iteration')
 title ('Accuracy Dynamics')
 
+%%
+inputsN=awgn(inputs,30,'measured');
+figure
+plot(inputs(:,121),'-r')
+hold on
+plot(inputsN(:,121),':b')
 
-
-
+% switch netType
+%     case 'patternNet'
+%         H = net(inputs_test(1:edge,:));
+%         [Mpred,Ipred]=max(H);%predictions
+%     case 'mlp'
+%         Ipred = double(classify(net,inputs_test(1:edge,:)'));
+% end
+% [Mtar,Itar]=max(targets_test);
+% 
+% figure
+% plotconfusion(Ipred, Itar);
 
 
 
