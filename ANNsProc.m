@@ -40,9 +40,10 @@ netType='mlp';% 'mlp', 'patternNet'
 modeN="useNetTemplate";%загрузка шаблона или обученной сети:
 % "useNetTemplate","useTrainedNet"
 GaussianNoise=struct('switch',"on",'value',10,'treshold',100);%add gaussian noise to signals while relabeling
+CropInp=[4 1];%crop input into several parts
 switchSet=struct('newClassDesign',newClassDesign,...
     'doubtModeReaction',doubtModeReaction,'netType',netType,'modeN',modeN,...
-    'GaussianNoise',GaussianNoise);%all switches are in one structure
+    'GaussianNoise',GaussianNoise,'CropInp',CropInp);%all switches are in one structure
 
 %Initialisation
 classDistribution=zeros(maxTrainIter,ns+1);
